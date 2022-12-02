@@ -1,0 +1,97 @@
+{
+  "name": "Payload Template",
+  "description": "Payload is a headless CMS and application framework built with TypeScript, Node.js, React and MongoDB.",
+  "apiVersion": "v1",
+  "project": {
+    "spec": {
+      "name": "Payload Template",
+      "description": "Payload is a headless CMS and application framework built with TypeScript, Node.js, React and MongoDB.",
+      "region": "europe-west",
+      "color": "#57637A"
+    }
+  },
+  "spec": {
+    "kind": "Workflow",
+    "spec": {
+      "type": "sequential",
+      "steps": [
+        {
+          "kind": "Addon",
+          "spec": {
+            "name": "database",
+            "type": "mongodb",
+            "version": "latest",
+            "billing": {
+              "deploymentPlan": "nf-compute-50",
+              "storageClass": "ssd",
+              "storage": 4096,
+              "replicas": 1
+            },
+            "tlsEnabled": true,
+            "externalAccessEnabled": false
+          }
+        },
+        {
+          "kind": "CombinedService",
+          "ref": "payload",
+          "spec": {
+            "name": "payload",
+            "billing": {
+              "deploymentPlan": "nf-compute-50"
+            },
+            "deployment": {
+              "instances": 1
+            },
+            "ports": [
+              {
+                "name": "p01",
+                "internalPort": 3000,
+                "public": true,
+                "protocol": "HTTP"
+              }
+            ],
+            "vcsData": {
+              "projectUrl": "https://github.com/northflank-guides/deploy-payload-on-northflank",
+              "projectType": "github",
+              "projectBranch": "master"
+            },
+            "buildSettings": {
+              "dockerfile": {
+                "buildEngine": "kaniko",
+                "dockerFilePath": "/Dockerfile",
+                "dockerWorkDir": "/"
+              }
+            }
+          }
+        },
+        {
+          "kind": "SecretGroup",
+          "spec": {
+            "name": "secrets",
+            "secretType": "environment-arguments",
+            "priority": 10,
+            "secrets": {
+              "variables": {
+                "PAYLOAD_PUBLIC_BASE_DNS": "https://${refs.payload.ports.0.dns}",
+                "PAYLOAD_SECRET": "${fn.randomSecret(32)}"
+              }
+            },
+            "addonDependencies": [
+              {
+                "addonId": "database",
+                "keys": [
+                  {
+                    "keyName": "MONGO_SRV",
+                    "aliases": [
+                      "MONGODB_URI"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}
